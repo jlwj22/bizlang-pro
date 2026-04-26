@@ -13,8 +13,7 @@ BANNER = """\
  |____/|_/___|_____\\__,_|_| |_|\\__, |
                                 |___/
 
-Natural language → data code. Type a command below.
-Commands:  mode [pandas|sql|chart]   quit
+Type a command. 'mode [pandas|sql|chart]' to switch output. 'quit' to exit.
 """
 
 MODES = ("pandas", "sql", "chart")
@@ -75,7 +74,6 @@ def repl():
 
         try:
             code = _run(raw, mode, ctx)
-            # update ctx from the parsed AST so follow-on commands know the df
             normed = normalize(raw)
             toks = Lexer(normed).tokenize()
             ast = Parser(toks).parse()

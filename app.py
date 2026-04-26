@@ -1,8 +1,3 @@
-"""
-BizLang Web IDE — Streamlit app
-Run with: streamlit run app.py
-"""
-
 import streamlit as st
 from bizlang.synonyms import normalize
 from bizlang.lexer import Lexer, TT
@@ -10,21 +5,18 @@ from bizlang.parser import Parser, ParseError
 from bizlang.generators.pandas_gen import PandasGenerator
 from bizlang.generators.sql_gen import SQLGenerator
 from bizlang.generators.chart_gen import ChartGenerator
-from bizlang.ast_nodes import LoadNode, ComputeNode, ChartNode, PivotNode, FilterNode
+from bizlang.ast_nodes import LoadNode, ComputeNode, FilterNode
 
 
-# ---- helpers ----
-
-def get_tokens(text: str) -> list:
-    normed = normalize(text)
-    return Lexer(normed).tokenize()
+def get_tokens(text):
+    return Lexer(normalize(text)).tokenize()
 
 
-def get_ast(tokens: list):
+def get_ast(tokens):
     return Parser(tokens).parse()
 
 
-def token_table(tokens: list) -> list[dict]:
+def token_table(tokens):
     rows = []
     for t in tokens:
         if t.type == TT.EOF:
@@ -33,7 +25,8 @@ def token_table(tokens: list) -> list[dict]:
     return rows
 
 
-def ast_to_dict(node) -> dict:
+def ast_to_dict(node):
+    from bizlang.ast_nodes import LoadNode, ComputeNode, ChartNode, PivotNode, FilterNode
     if isinstance(node, LoadNode):
         d = {"type": "LoadNode", "filename": node.filename}
         if node.follow_on:
@@ -87,41 +80,26 @@ EXAMPLES = [
 ]
 
 
-# ---- page config ----
+st.set_page_config(page_title="BizLang IDE", page_icon="📊", layout="wide")
 
-st.set_page_config(
-    page_title="BizLang IDE",
-    page_icon="📊",
-    layout="wide",
-)
-
-st.title("📊 BizLang — Business Analytics DSL")
+st.title("📊 BizLang")
 st.caption("Type a plain-English analytics command and get runnable code back.")
-
 st.divider()
-
-# ---- sidebar ----
 
 with st.sidebar:
     st.header("Settings")
     mode = st.radio("Output mode", ["pandas", "sql", "chart"], index=0)
     st.divider()
-    st.subheader("Example commands")
+    st.subheader("Examples")
     selected_example = st.selectbox("Load an example", ["(pick one)"] + EXAMPLES)
     st.divider()
     st.subheader("About")
     st.markdown(
-        "BizLang parses natural English → code using a hand-written "
-        "recursive descent parser. No AI involved — just a lexer, parser, "
-        "and code generator."
+        "BizLang is a DSL for business analytics. Type a command and it "
+        "generates Pandas, SQL, or chart code you can run directly."
     )
 
-# ---- main input ----
-
-if selected_example != "(pick one)":
-    default_input = selected_example
-else:
-    default_input = ""
+default_input = selected_example if selected_example != "(pick one)" else ""
 
 user_input = st.text_input(
     "Enter a BizLang command",
@@ -148,12 +126,10 @@ if run_btn or user_input:
         st.error(f"Unexpected error: {e}")
         st.stop()
 
-    # context for generators (no file loaded in web mode — just use df)
     ctx = {"df_name": "df"}
     if isinstance(ast, LoadNode):
         ctx["last_file"] = ast.filename
 
-    # generate the code
     try:
         if mode == "pandas":
             code = PandasGenerator(ctx).generate(ast)
@@ -167,8 +143,6 @@ if run_btn or user_input:
     except Exception as e:
         st.error(f"Code generation error: {e}")
         st.stop()
-
-    # ---- output layout ----
 
     col_code, col_tree = st.columns([3, 2])
 
@@ -190,8 +164,6 @@ if run_btn or user_input:
         with st.expander("AST", expanded=True):
             st.json(ast_to_dict(ast))
 
-    # ---- run it live (pandas only, if samples/sales.csv is present) ----
-
     if mode == "pandas" and isinstance(ast, (LoadNode, ComputeNode, FilterNode)):
         st.divider()
         st.subheader("Live preview")
@@ -202,7 +174,6 @@ if run_btn or user_input:
             import io
             import contextlib
 
-            # inject the sample df so the generated code has something to work with
             df = pd.read_csv("samples/sales.csv")
             df["date"] = pd.to_datetime(df["date"])
 
@@ -214,9 +185,7 @@ if run_btn or user_input:
 
             output = captured.getvalue()
             if output.strip():
-                # try to parse back as a dataframe for a nice table view
                 try:
-                    lines = [l for l in output.strip().split("\n")]
                     result_df = exec_globals.get("result") or exec_globals.get("filtered") or exec_globals.get("pivot")
                     if result_df is not None and hasattr(result_df, "head"):
                         st.dataframe(result_df, use_container_width=True)

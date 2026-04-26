@@ -1,23 +1,10 @@
-# BizLang Grammar Definition (BNF/EBNF)
-# -----------------------------------------
-# This describes the full syntax of the BizLang DSL.
-# BizLang lets business users write plain-English analytics commands
-# that get translated into Pandas, SQL, or chart code.
-#
-# Notation used here:
-#   ::=         defines a rule
-#   |           OR (alternatives)
-#   ( ... )     grouping
-#   [ ... ]     optional (0 or 1)
-#   { ... }     zero or more repetitions
-#   "word"      literal terminal (keyword)
-#   <name>      non-terminal rule
-#
+# BizLang Grammar (BNF/EBNF)
+# ::=  defines a rule
+# |    alternatives
+# [ ]  optional
+# { }  zero or more
+# " "  literal keyword
 
-
-# -------------------------------------------------------
-# Top-level entry point
-# -------------------------------------------------------
 
 <program>       ::= <statement> EOF
 
@@ -28,81 +15,52 @@
                   | <filter_stmt>
 
 
-# -------------------------------------------------------
-# Load command
-#
-# Examples:
-#   "load sales.csv"
-#   "load sales.csv and compute monthly revenue by region"
-# -------------------------------------------------------
+# load
+# e.g. "load sales.csv" or "load sales.csv and compute monthly revenue by region"
 
 <load_stmt>     ::= "load" <filename> [ "and" <compute_stmt> ]
 
 <filename>      ::= WORD "." ( "csv" | "xlsx" | "json" | "parquet" )
 
 
-# -------------------------------------------------------
-# Compute command  (aggregation + grouping)
-#
-# Examples:
-#   "compute sum revenue by region"
-#   "compute monthly revenue by region"
-#   "compute average profit by department where region is North"
-# -------------------------------------------------------
+# compute (aggregation + groupby)
+# e.g. "compute sum revenue by region"
+# e.g. "compute monthly revenue by region where region is North"
 
 <compute_stmt>  ::= "compute" [ <time_grain> ] <agg_expr> [ <time_grain> ]
                     "by" <column_list>
                     [ "where" <condition> ]
 
 <agg_expr>      ::= [ <agg_func> ] IDENT
-                  # if no agg_func is given, defaults to sum
 
 <agg_func>      ::= "sum" | "avg" | "count" | "min" | "max"
 
 <time_grain>    ::= "monthly" | "daily" | "quarterly" | "yearly"
 
 
-# -------------------------------------------------------
-# Chart command
-#
-# Examples:
-#   "chart bar revenue by region"
-#   "generate a bar chart comparing Q1 and Q2 expenses"
-#   "plot line revenue by region"
-# -------------------------------------------------------
+# chart
+# e.g. "chart bar revenue by region"
+# e.g. "generate a bar chart comparing Q1 and Q2 expenses"
 
 <chart_stmt>    ::= "chart" [ "a" | "an" ] [ <chart_type> ] [ "chart" ]
-                    ( <agg_expr>
-                    | "comparing" <column_list> [ IDENT ]
-                    )
+                    ( <agg_expr> | "comparing" <column_list> [ IDENT ] )
                     [ "by" <column_list> ]
 
 <chart_type>    ::= "bar" | "line" | "pie" | "scatter"
-                  # defaults to "bar" if not specified
 
 
-# -------------------------------------------------------
-# Pivot command
-#
-# Examples:
-#   "pivot by product"
-#   "create a pivot table by product and region"
-#   "pivot by product and region compute sum revenue"
-# -------------------------------------------------------
+# pivot
+# e.g. "pivot by product and region"
+# e.g. "create a pivot table by product and region compute sum revenue"
 
 <pivot_stmt>    ::= "pivot" "by" <column_list>
                     [ "and" [ "by" ] <column_list> ]
                     [ "compute" <agg_expr> ]
 
 
-# -------------------------------------------------------
-# Filter command
-#
-# Examples:
-#   "filter sales where region is North"
-#   "filter df where region is not South"
-#   "filter df where region is North and revenue is 5000"
-# -------------------------------------------------------
+# filter
+# e.g. "filter sales where region is North"
+# e.g. "filter df where region is not South and revenue is 5000"
 
 <filter_stmt>   ::= "filter" [ IDENT ] "where"
                     <condition> { "and" <condition> }
@@ -112,41 +70,20 @@
 <value>         ::= STRING | NUMBER | IDENT
 
 
-# -------------------------------------------------------
-# Shared rules
-# -------------------------------------------------------
+# shared
 
 <column_list>   ::= IDENT { "and" IDENT }
-                  # "and" is only consumed here if followed by another IDENT,
-                  # not a keyword -- this resolves the AND overloading issue
 
-# -------------------------------------------------------
-# Terminal tokens (produced by the Lexer)
-# -------------------------------------------------------
+
+# terminals
 
 IDENT           ::= LETTER { LETTER | DIGIT | "_" | "-" }
-STRING          ::= '"' { any character except '"' } '"'
-                  | "'" { any character except "'" } "'"
+STRING          ::= '"' { any char except '"' } '"'
 NUMBER          ::= [ "-" ] DIGIT { DIGIT } [ "." { DIGIT } ]
 FILENAME        ::= IDENT "." ( "csv" | "xlsx" | "json" | "parquet" )
 EOF             ::= end of input
 
 
-# -------------------------------------------------------
-# Synonym expansion (applied BEFORE lexing)
-#
-# The normalizer does a pre-pass to map common business
-# synonyms to canonical keywords. For example:
-#
-#   "generate"  → "chart"
-#   "calculate" → "compute"
-#   "average"   → "avg"
-#   "total"     → "sum"
-#   "grouped by"→ "by"
-#   "versus"    → "comparing"
-#
-# This happens via regex substitution on the raw input
-# string before any tokenization takes place, so the
-# grammar above only needs to handle canonical forms.
-# See synonyms.py for the full synonym table.
-# -------------------------------------------------------
+# Note: synonym normalization happens before lexing.
+# Words like "generate", "calculate", "average", "grouped by" etc.
+# are replaced with canonical keywords first. See synonyms.py.

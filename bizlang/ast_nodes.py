@@ -4,14 +4,14 @@ from typing import Optional, Union
 
 @dataclass
 class AggExpr:
-    func: str    # sum | avg | count | min | max
+    func: str
     column: str
 
 
 @dataclass
 class Condition:
     column: str
-    op: str      # == | != | > | < | >= | <=
+    op: str
     value: Union[str, int, float]
     negate: bool = False
 
@@ -19,20 +19,20 @@ class Condition:
 @dataclass
 class LoadNode:
     filename: str
-    follow_on: Optional[object] = None  # another AST node chained via AND
+    follow_on: Optional[object] = None
 
 
 @dataclass
 class ComputeNode:
     agg: AggExpr
     group_by: list
-    time_grain: Optional[str] = None   # monthly | daily | quarterly | yearly
+    time_grain: Optional[str] = None
     where: Optional[Condition] = None
 
 
 @dataclass
 class ChartNode:
-    chart_type: str          # bar | line | pie | scatter
+    chart_type: str
     agg: AggExpr
     compare_cols: list = field(default_factory=list)
     group_by: list = field(default_factory=list)
@@ -48,4 +48,4 @@ class PivotNode:
 @dataclass
 class FilterNode:
     source: str
-    conditions: list  # list[Condition]
+    conditions: list

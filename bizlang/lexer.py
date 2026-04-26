@@ -4,45 +4,37 @@ from typing import Any
 
 
 class TT(Enum):
-    # commands
     LOAD      = auto()
     COMPUTE   = auto()
     CHART     = auto()
     PIVOT     = auto()
     FILTER    = auto()
-    # agg funcs
     SUM       = auto()
     AVG       = auto()
     COUNT     = auto()
     MIN       = auto()
     MAX       = auto()
-    # chart types
     BAR       = auto()
     LINE      = auto()
     PIE       = auto()
     SCATTER   = auto()
-    # time grains
     MONTHLY   = auto()
     DAILY     = auto()
     QUARTERLY = auto()
     YEARLY    = auto()
-    # structural
     BY        = auto()
     AND       = auto()
     WHERE     = auto()
     IS        = auto()
     NOT       = auto()
     COMPARING = auto()
-    # literals
     IDENT     = auto()
     STRING    = auto()
     NUMBER    = auto()
     FILENAME  = auto()
-    # meta
     EOF       = auto()
 
 
-# alias so the rest of the codebase can do `from bizlang.lexer import TokenType`
 TokenType = TT
 
 KEYWORDS = {
@@ -86,8 +78,6 @@ class Token:
 
 
 class Lexer:
-    """Tokenize a normalized BizLang string."""
-
     def __init__(self, text: str):
         self.text = text
         self.pos = 0
@@ -102,7 +92,6 @@ class Lexer:
             if tok:
                 toks.append(tok)
 
-        # merge consecutive IDENT tokens (handles "profit margin" → "profit_margin")
         toks = self._merge_idents(toks)
         toks.append(Token(TT.EOF, None, self.pos))
         return toks
@@ -115,19 +104,15 @@ class Lexer:
         start = self.pos
         ch = self.text[self.pos]
 
-        # quoted string
         if ch in ('"', "'"):
             return self._read_string(start)
 
-        # number
         if ch.isdigit() or (ch == "-" and self.pos + 1 < len(self.text) and self.text[self.pos + 1].isdigit()):
             return self._read_number(start)
 
-        # word (keyword, filename, or ident)
         if ch.isalpha() or ch == "_":
             return self._read_word(start)
 
-        # skip unrecognized punctuation
         self.pos += 1
         return None
 
@@ -138,7 +123,7 @@ class Lexer:
         while self.pos < len(self.text) and self.text[self.pos] != quote:
             buf.append(self.text[self.pos])
             self.pos += 1
-        self.pos += 1  # closing quote
+        self.pos += 1
         return Token(TT.STRING, "".join(buf), start)
 
     def _read_number(self, start) -> Token:
@@ -160,7 +145,6 @@ class Lexer:
             self.pos += 1
         word = "".join(buf)
 
-        # check if it looks like a filename
         for ext in FILE_EXTS:
             if word.endswith(ext):
                 return Token(TT.FILENAME, word, start)
@@ -172,9 +156,8 @@ class Lexer:
         return Token(TT.IDENT, word, start)
 
     def _merge_idents(self, toks: list) -> list:
-        # join back-to-back IDENTs into one (e.g. "profit" "margin" → "profit_margin")
-        # only merge if BOTH tokens are purely alphabetic — this prevents things like
-        # "Q2 expenses" from collapsing into "Q2_expenses" (Q2 has a digit)
+        # join adjacent alpha-only IDENTs: "profit margin" -> "profit_margin"
+        # skip if either token has digits (e.g. Q2) so we don't mangle column refs
         out = []
         i = 0
         while i < len(toks):

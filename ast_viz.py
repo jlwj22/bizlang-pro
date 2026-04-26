@@ -1,22 +1,9 @@
-"""
-ast_viz.py — pretty-print the parse tree and AST for any BizLang command.
-
-Usage:
-    python ast_viz.py "load sales.csv and compute monthly revenue by region"
-    python ast_viz.py  (runs built-in demo examples)
-"""
-
 import sys
 from bizlang.synonyms import normalize
 from bizlang.lexer import Lexer, TT
 from bizlang.parser import Parser, ParseError
-from bizlang.ast_nodes import (
-    LoadNode, ComputeNode, ChartNode, PivotNode, FilterNode, AggExpr, Condition
-)
+from bizlang.ast_nodes import LoadNode, ComputeNode, ChartNode, PivotNode, FilterNode
 
-
-# ---- parse tree printer ----
-# walks the raw token list and draws an ASCII tree
 
 def print_parse_tree(tokens: list, input_text: str):
     print(f"  Input:  \"{input_text}\"")
@@ -34,22 +21,19 @@ def print_parse_tree(tokens: list, input_text: str):
     print()
 
 
-# ---- AST printer ----
-# recursively walks the AST nodes and draws them as a tree
-
 def _node_lines(node, prefix="", is_last=True) -> list:
     connector = "└── " if is_last else "├── "
     lines = []
 
     if isinstance(node, LoadNode):
-        lines.append(prefix + connector + f"LoadNode")
-        child_prefix = prefix + ("    " if is_last else "│   ")
-        lines.append(child_prefix + f"├── filename: \"{node.filename}\"")
+        lines.append(prefix + connector + "LoadNode")
+        cp = prefix + ("    " if is_last else "│   ")
+        lines.append(cp + f"├── filename: \"{node.filename}\"")
         if node.follow_on:
-            lines.append(child_prefix + "└── follow_on:")
-            lines += _node_lines(node.follow_on, child_prefix + "    ", is_last=True)
+            lines.append(cp + "└── follow_on:")
+            lines += _node_lines(node.follow_on, cp + "    ", is_last=True)
         else:
-            lines.append(child_prefix + "└── follow_on: None")
+            lines.append(cp + "└── follow_on: None")
 
     elif isinstance(node, ComputeNode):
         lines.append(prefix + connector + "ComputeNode")
@@ -98,13 +82,10 @@ def _node_lines(node, prefix="", is_last=True) -> list:
 def print_ast(ast):
     print("  AST")
     print("  " + "-" * 40)
-    lines = _node_lines(ast, prefix="  ", is_last=True)
-    for l in lines:
-        print(l)
+    for line in _node_lines(ast, prefix="  ", is_last=True):
+        print(line)
     print()
 
-
-# ---- demo runner ----
 
 DEMO_INPUTS = [
     "load sales.csv and compute monthly revenue by region",
@@ -120,9 +101,7 @@ def run(text: str):
     print()
     normed = normalize(text)
     tokens = Lexer(normed).tokenize()
-
     print_parse_tree(tokens, text)
-
     try:
         ast = Parser(tokens).parse()
         print_ast(ast)
