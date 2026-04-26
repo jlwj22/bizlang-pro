@@ -173,14 +173,21 @@ class Lexer:
 
     def _merge_idents(self, toks: list) -> list:
         # join back-to-back IDENTs into one (e.g. "profit" "margin" → "profit_margin")
+        # only merge if BOTH tokens are purely alphabetic — this prevents things like
+        # "Q2 expenses" from collapsing into "Q2_expenses" (Q2 has a digit)
         out = []
         i = 0
         while i < len(toks):
-            if toks[i].type == TT.IDENT and i + 1 < len(toks) and toks[i + 1].type == TT.IDENT:
-                merged = toks[i].value + "_" + toks[i + 1].value
-                out.append(Token(TT.IDENT, merged, toks[i].pos))
+            a = toks[i]
+            if (a.type == TT.IDENT
+                    and i + 1 < len(toks)
+                    and toks[i + 1].type == TT.IDENT
+                    and str(a.value).isalpha()
+                    and str(toks[i + 1].value).isalpha()):
+                merged = a.value + "_" + toks[i + 1].value
+                out.append(Token(TT.IDENT, merged, a.pos))
                 i += 2
             else:
-                out.append(toks[i])
+                out.append(a)
                 i += 1
         return out
